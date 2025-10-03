@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(CLIENT)
+  addresses String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Связи
+  medicProfile Medic?
+  clientOrders Order[] @relation("ClientOrders")
+  medicOrders  Order[] @relation("MedicOrders")
+  sentMessages Message[]
+  reviews      Review[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Medic {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  specialty    String
+  experience   Int
+  documents    String[]     // URLs файлов сертификатов
+  areas        String[]     // районы выезда
+  schedule     Json?        // график работы
+  status       MedicStatus  @default(PENDING)
+  ratingAvg    Float        @default(0)
+  reviewsCount Int          @default(0)
+  pushToken    String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("medics")
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  clientId      String
+  medicId       String?
+  serviceType   String
+  address       String
+  scheduledTime DateTime
+  status        OrderStatus   @default(NEW)
+  paymentStatus PaymentStatus @default(PENDING)
+  comment       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Связи
+  client   User      @relation("ClientOrders", fields: [clientId], references: [id])
+  medic    User?     @relation("MedicOrders", fields: [medicId], references: [id])
+  messages Message[]
+  review   Review?
+
+  @@map("orders")
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  orderId   String
+  fromUserId String
+  text      String?
+  fileUrl   String?
+  fileType  MessageType @default(TEXT)
+  createdAt DateTime    @default(now())
+
+  // Связи
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  from  User  @relation(fields: [fromUserId], references: [id])
+
+  @@map("messages")
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  clientId    String
+  medicId     String
+  rating      Int      // 1-5
+  comment     String?
+  isComplaint Boolean  @default(false)
+  isHidden    Boolean  @default(false) // для админ-модерации
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Связи
+  order  Order @relation(fields: [orderId], references: [id])
+  client User  @relation(fields: [clientId], references: [id])
+
+  @@map("reviews")
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  channel   NotificationChannel
+  type      String
+  orderId   String?
+  title     String
+  body      String
+  status    NotificationStatus @default(PENDING)
+  createdAt DateTime           @default(now())
+
+  // Связи
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// Энумы
+enum UserRole {
+  CLIENT
+  MEDIC
+  ADMIN
+}
+
+enum MedicStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BANNED
+}
+
+enum OrderStatus {
+  NEW
+  ACCEPTED
+  ON_THE_WAY
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum NotificationChannel {
+  PUSH
+  SMS
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
