@@ -7,19 +7,25 @@ import authRoutes from './routes/auth';
 import ordersRoutes from './routes/orders';
 import reviewsRoutes from './routes/reviews';
 import adminRoutes from './routes/admin';
-import { prisma } from './lib/prisma';
 import notificationsRoutes from './routes/notifications';
+import { prisma } from './lib/prisma';
 
 // Загружаем переменные окружения
 dotenv.config({ path: '../.env' });
 
 const app = express();
-const server = createServer(app);
-const io = new Server(server, {
+const httpServer = createServer(app);
+
+// Socket.IO с CORS
+const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: [
+      'http://localhost:3000',
+      'https://medic-platform.vercel.app',
+      /\.vercel\.app$/,
+    ],
+    credentials: true,
+    methods: ['GET', 'POST']
   }
 });
 
@@ -29,8 +35,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://medic-platform.vercel.app', //
-    'https://medic-platform-git-main-ваш-username.vercel.app',
+    'https://medic-platform.vercel.app',
+    /\.vercel\.app$/,
   ],
   credentials: true
 }));
@@ -58,17 +64,6 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationsRoutes);
-
-// Тестовый роут
-app.get('/api/test', (req, res) => {
-  res.json({
-    message: 'Тестовый роут работает',
-    data: {
-      users: ['Клиент 1', 'Медик 1'],
-      orders: ['Заказ 1', 'Заказ 2']
-    }
-  });
-});
 
 // Socket.IO для чата
 io.on('connection', (socket) => {
@@ -139,9 +134,9 @@ io.on('connection', (socket) => {
 });
 
 // Запуск сервера
-server.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Backend сервер запущен на http://localhost:${PORT}`);
-  console.log(`📡 Socket.IO готов к подключениям`);
+  console.log('📡 Socket.IO готов к подключениям');
 });
 
 // Graceful shutdown
