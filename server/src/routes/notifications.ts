@@ -10,16 +10,25 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Инициализация Firebase Admin
 if (!admin.apps.length) {
   try {
-    const serviceAccount = require(path.join(__dirname, '../../serviceAccountKey.json'));
-    
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    
-    console.log('✅ Firebase Admin инициализирован');
-  } catch (error) {
-    console.error('❌ Ошибка инициализации Firebase Admin:', error);
-    console.log('Push-уведомления работать не будут');
+    if (process.env.FIREBASE_PRIVATE_KEY) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        }),
+      });
+      console.log('✅ Firebase Admin инициализирован (env vars)');
+    } else {
+      const serviceAccount = require(path.join(__dirname, '../../serviceAccountKey.json'));
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      console.log('✅ Firebase Admin инициализирован (file)');
+    }
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('❌ Ошибка Firebase:', err.message);
   }
 }
 
