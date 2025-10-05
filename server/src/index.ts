@@ -27,7 +27,10 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'https://medic-platform.vercel.app', // замените на ваш реальный Vercel домен
+  ],
   credentials: true
 }));
 app.use(express.json());
