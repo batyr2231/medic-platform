@@ -176,4 +176,50 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// Запрос на восстановление пароля
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user) {
+      return res.json({ message: 'Если email существует, письмо отправлено' });
+    }
+    
+    const resetToken = jwt.sign(
+      { userId: user.id },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    
+    // TODO: Отправить email с ссылкой
+    console.log(`Reset token для ${email}:`, resetToken);
+    console.log(`Ссылка для сброса: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`);
+    
+    res.json({ message: 'Если email существует, письмо отправлено' });
+  } catch (error) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Сброс пароля
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { password: hashedPassword }
+    });
+    
+    res.json({ message: 'Пароль успешно изменён' });
+  } catch (error) {
+    res.status(400).json({ error: 'Недействительный или истекший токен' });
+  }
+});
+
 export default router;

@@ -31,6 +31,33 @@ export default function OrdersPanel() {
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
 
+  const exportToCSV = () => {
+    const csvContent = [
+      ['ID', 'Дата создания', 'Клиент', 'Телефон клиента', 'Медик', 'Услуга', 'Адрес', 'Статус', 'Оплата'].join(','),
+      ...orders.map(order => [
+        order.id,
+        new Date(order.createdAt).toLocaleString('ru-RU'),
+        order.client.name,
+        order.client.phone,
+        order.medic?.name || '-',
+        order.serviceType,
+        `"${order.address}"`,
+        statusLabels[order.status],
+        order.paymentStatus === 'PAID' ? 'Оплачено' : 'Не оплачено',
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     const token = document.cookie
       .split('; ')
@@ -132,6 +159,12 @@ export default function OrdersPanel() {
     <div>
       <h2 className="text-2xl font-bold mb-6">Все заказы ({orders.length})</h2>
 
+      <button
+        onClick={exportToCSV}
+        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
+      >
+        📥 Экспорт в CSV
+      </button>      
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500">Заказов пока нет</div>
       ) : (
